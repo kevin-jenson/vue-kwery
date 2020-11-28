@@ -1,7 +1,7 @@
 import { observable } from "vue";
 import store from "./store";
 
-const STATUSES = {
+export const STATUSES = {
   pending: "PENDING",
   error: "ERROR",
   success: "SUCCESS",
@@ -39,11 +39,9 @@ function resolve(key, cb) {
 const kweries = {};
 function addToKweries(client, queries) {
   for (let key in queries) {
-    console.log("key:", key);
     let cb;
     let _cb = queries[key];
     let argsCount = _cb.length;
-    console.log("argsCount:", argsCount);
 
     if (client) {
       argsCount -= 1;
