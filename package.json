@@ -1,7 +1,7 @@
 {
   "name": "vue-kwery",
   "version": "0.1.0",
-  "description": "",
+  "description": "Vue state management for http requests",
   "main": "index.js",
   "scripts": {
     "test": "jest",
@@ -12,8 +12,18 @@
     "type": "git",
     "url": "git+https://github.com/kevin-jenson/rstql.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "state",
+    "state management",
+    "vue",
+    "vuejs",
+    "kwery",
+    "query",
+    "vue kwery",
+    "vue query",
+    "rest"
+  ],
+  "author": "Kevin Jenson [kjjenson@gmail.com]",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/kevin-jenson/rstql/issues"

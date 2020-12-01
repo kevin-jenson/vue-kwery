@@ -1,5 +1,6 @@
 import { observable } from "vue";
-import store from "./store";
+
+const store = new Map();
 
 export const STATUSES = {
   pending: "PENDING",
@@ -8,8 +9,8 @@ export const STATUSES = {
 };
 
 function resolve(key, cb) {
-  if (store[key]) {
-    return store[key];
+  if (store.has(key)) {
+    return store.get(key);
   }
 
   let data = observable({ status: STATUSES.pending, data: null });
@@ -31,9 +32,9 @@ function resolve(key, cb) {
     data.data = result;
   }
 
-  store[key] = data;
+  store.set(key, data);
 
-  return store[key];
+  return store.get(key);
 }
 
 const kweries = {};
