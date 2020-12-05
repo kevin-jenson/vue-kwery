@@ -1,76 +1,159 @@
-import createKwery, { query, STATUSES } from "./kwery";
+import createKwery, { query, mutate, STATUSES } from "./kwery";
 
 describe("kwery", () => {
-  let queries = {
-    requests() {
-      return "hello all";
-    },
-    request(id) {
-      return "hello " + id;
-    },
-    clients() {
-      return "this is a client";
-    },
-  };
+  describe("kweries", () => {
+    let queries = {
+      requests() {
+        return "hello all";
+      },
+      request(id) {
+        return "hello " + id;
+      },
+      clients() {
+        return "this is a client";
+      },
+    };
 
-  let client;
-  beforeEach(() => {
-    client = createKwery({ queries });
-  });
+    let client;
+    beforeEach(() => {
+      client = createKwery({ queries });
+    });
 
-  test("all queries passed to config are available on query method returned from client", () => {
-    client.query((kweries) => {
-      expect(kweries.requests.data).toEqual(queries.requests());
-      expect(kweries.request("person").data).toEqual(queries.request("person"));
-      expect(kweries.clients.data).toEqual(queries.clients());
+    test("all queries passed to config are available on query method returned from client", () => {
+      client.query((kweries) => {
+        expect(kweries.requests.data).toEqual(queries.requests());
+        expect(kweries.request("person").data).toEqual(queries.request("person"));
+        expect(kweries.clients.data).toEqual(queries.clients());
+      });
+    });
+
+    test("all queries passed to config are available on query method from import", () => {
+      query((kweries) => {
+        expect(kweries.requests.data).toEqual(queries.requests());
+        expect(kweries.request("person").data).toEqual(queries.request("person"));
+        expect(kweries.clients.data).toEqual(queries.clients());
+      });
+    });
+
+    test("kweries are updated when promise is resolved", async () => {
+      let data = "This has resolved";
+      function resolvedRequest() {
+        return new Promise((resolve) => {
+          setTimeout(resolve, 1000, data);
+        });
+      }
+
+      let client = createKwery({ queries: { resolvedRequest } });
+
+      let resp = client.query((kweries) => kweries.resolvedRequest);
+
+      expect(resp.status).toEqual(STATUSES.pending);
+
+      await resolvedRequest();
+
+      expect(resp.status).toEqual(STATUSES.success);
+      expect(resp.data).toEqual(data);
+    });
+
+    test("kweries are updated when promise is rejected", async () => {
+      let data = "This has rejected";
+      function rejectedRequest() {
+        return new Promise((_resolve, reject) => {
+          setTimeout(reject, 1000, data);
+        });
+      }
+
+      let client = createKwery({ queries: { rejectedRequest } });
+
+      let resp = client.query((kweries) => kweries.rejectedRequest);
+
+      expect(resp.status).toEqual(STATUSES.pending);
+
+      await rejectedRequest().catch((error) => error);
+
+      expect(resp.status).toEqual(STATUSES.error);
+      expect(resp.data).toEqual(data);
     });
   });
 
-  test("all queries passed to config are available on query method from import", () => {
-    query((kweries) => {
-      expect(kweries.requests.data).toEqual(queries.requests());
-      expect(kweries.request("person").data).toEqual(queries.request("person"));
-      expect(kweries.clients.data).toEqual(queries.clients());
+  describe("meutasions", () => {
+    let mutations = {
+      createRequest(input) {
+        return input;
+      },
+      updateRequest(id, input) {
+        return {
+          ...input,
+          id,
+        };
+      },
+    };
+
+    let client;
+    beforeEach(() => {
+      client = createKwery({ mutations });
     });
-  });
 
-  test("kweries are updated when promise is resolved", async () => {
-    let data = "This has resolved";
-    function resolvedRequest() {
-      return new Promise((resolve) => {
-        setTimeout(resolve, 1000, data);
+    test("all mutatiions passed to config are available in client returned function", () => {
+      client.mutate((meutasions) => {
+        expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
+        expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
+          mutations.updateRequest("id", { data: "hello" }),
+        );
       });
-    }
+    });
 
-    let client = createKwery({ queries: { resolvedRequest } });
-
-    let resp = client.query((kweries) => kweries.resolvedRequest);
-
-    expect(resp.status).toEqual(STATUSES.pending);
-
-    await resolvedRequest();
-
-    expect(resp.status).toEqual(STATUSES.success);
-    expect(resp.data).toEqual(data);
-  });
-
-  test("kweries are updated when promise is rejected", async () => {
-    let data = "This has rejected";
-    function rejectedRequest() {
-      return new Promise((_resolve, reject) => {
-        setTimeout(reject, 1000, data);
+    test("all mutations passed to config are available mutate function import", () => {
+      mutate((meutasions) => {
+        expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
+        expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
+          mutations.updateRequest("id", { data: "hello" }),
+        );
       });
-    }
+    });
 
-    let client = createKwery({ queries: { rejectedRequest } });
+    test("mutation updates when resolved", async () => {
+      let message = "resolved";
+      let mutations = {
+        resolvedMutation(data) {
+          return new Promise((resolve) => {
+            setTimeout(resolve, 1000, data);
+          });
+        },
+      };
 
-    let resp = client.query((kweries) => kweries.rejectedRequest);
+      let client = createKwery({ mutations });
 
-    expect(resp.status).toEqual(STATUSES.pending);
+      let resp = client.mutate((mutations) => mutations.resolvedMutation(message));
 
-    await rejectedRequest().catch((error) => error);
+      expect(resp.status).toEqual(STATUSES.pending);
 
-    expect(resp.status).toEqual(STATUSES.error);
-    expect(resp.data).toEqual(data);
+      await mutations.resolvedMutation();
+
+      expect(resp.status).toEqual(STATUSES.success);
+      expect(resp.data).toEqual(message);
+    });
+
+    test("mutation updates when rejected", async () => {
+      let message = "rejected";
+      let mutations = {
+        rejectedMutation(data) {
+          return new Promise((_resolve, reject) => {
+            setTimeout(reject, 1000, data);
+          });
+        },
+      };
+
+      let client = createKwery({ mutations });
+
+      let resp = client.mutate((mutations) => mutations.rejectedMutation(message));
+
+      expect(resp.status).toEqual(STATUSES.pending);
+
+      await mutations.rejectedMutation().catch((error) => error);
+
+      expect(resp.status).toEqual(STATUSES.error);
+      expect(resp.data).toEqual(message);
+    });
   });
 });

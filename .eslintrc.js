@@ -11,5 +11,7 @@ module.exports = {
     ecmaVersion: 12,
     sourceType: "module",
   },
-  rules: {},
+  rules: {
+    "no-inner-declarations": 0,
+  },
 };

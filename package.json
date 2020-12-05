@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kevin-jenson/rstql.git"
+    "url": "git+https://github.com/kevin-jenson/vue-kwery.git"
   },
   "keywords": [
     "state",
@@ -26,9 +26,9 @@
   "author": "Kevin Jenson [kjjenson@gmail.com]",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/kevin-jenson/rstql/issues"
+    "url": "https://github.com/kevin-jenson/vue-kwery/issues"
   },
-  "homepage": "https://github.com/kevin-jenson/rstql#readme",
+  "homepage": "https://github.com/kevin-jenson/vue-kwery#readme",
   "peerDependencies": {
     "vue": "^2.6.12"
   },
@@ -38,7 +38,19 @@
     "babel-jest": "^26.6.3",
     "eslint": "^7.13.0",
     "eslint-plugin-jest": "^24.1.3",
+    "husky": "^4.3.0",
     "jest": "^26.6.3",
     "prettier": "2.1.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-push": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "./src/*.{js,jsx,ts,tsx}": [
+      "npx prettier --write",
+      "eslint src/*.js --fix-dry-run"
+    ]
   }
 }
