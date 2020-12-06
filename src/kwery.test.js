@@ -1,4 +1,5 @@
-import createKwery, { query, mutate, STATUSES } from "./kwery";
+import createKwery, { query, mutate } from "./kwery";
+import Data from "./data";
 
 describe("kwery", () => {
   describe("kweries", () => {
@@ -12,15 +13,27 @@ describe("kwery", () => {
       clients() {
         return "this is a client";
       },
+      called: jest.fn(() => "this one was called"),
+      notCalled: jest.fn(() => "this one was not called"),
     };
 
     let client;
-    beforeEach(() => {
+    beforeAll(() => {
       client = createKwery({ queries });
     });
 
+    test("only calls functions when called", () => {
+      query(kweries => kweries.called);
+
+      expect(queries.called).toHaveBeenCalled();
+      expect(queries.notCalled).not.toHaveBeenCalled();
+
+      query(kweries => kweries.notCalled);
+      expect(queries.notCalled).toHaveBeenCalled();
+    });
+
     test("all queries passed to config are available on query method returned from client", () => {
-      client.query((kweries) => {
+      client.query(kweries => {
         expect(kweries.requests.data).toEqual(queries.requests());
         expect(kweries.request("person").data).toEqual(queries.request("person"));
         expect(kweries.clients.data).toEqual(queries.clients());
@@ -28,7 +41,7 @@ describe("kwery", () => {
     });
 
     test("all queries passed to config are available on query method from import", () => {
-      query((kweries) => {
+      query(kweries => {
         expect(kweries.requests.data).toEqual(queries.requests());
         expect(kweries.request("person").data).toEqual(queries.request("person"));
         expect(kweries.clients.data).toEqual(queries.clients());
@@ -38,20 +51,20 @@ describe("kwery", () => {
     test("kweries are updated when promise is resolved", async () => {
       let data = "This has resolved";
       function resolvedRequest() {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
           setTimeout(resolve, 1000, data);
         });
       }
 
       let client = createKwery({ queries: { resolvedRequest } });
 
-      let resp = client.query((kweries) => kweries.resolvedRequest);
+      let resp = client.query(kweries => kweries.resolvedRequest);
 
-      expect(resp.status).toEqual(STATUSES.pending);
+      expect(resp.status).toEqual(Data.STATUSES.pending);
 
       await resolvedRequest();
 
-      expect(resp.status).toEqual(STATUSES.success);
+      expect(resp.status).toEqual(Data.STATUSES.success);
       expect(resp.data).toEqual(data);
     });
 
@@ -65,13 +78,13 @@ describe("kwery", () => {
 
       let client = createKwery({ queries: { rejectedRequest } });
 
-      let resp = client.query((kweries) => kweries.rejectedRequest);
+      let resp = client.query(kweries => kweries.rejectedRequest);
 
-      expect(resp.status).toEqual(STATUSES.pending);
+      expect(resp.status).toEqual(Data.STATUSES.pending);
 
-      await rejectedRequest().catch((error) => error);
+      await rejectedRequest().catch(error => error);
 
-      expect(resp.status).toEqual(STATUSES.error);
+      expect(resp.status).toEqual(Data.STATUSES.error);
       expect(resp.data).toEqual(data);
     });
   });
@@ -95,7 +108,7 @@ describe("kwery", () => {
     });
 
     test("all mutatiions passed to config are available in client returned function", () => {
-      client.mutate((meutasions) => {
+      client.mutate(meutasions => {
         expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
         expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
           mutations.updateRequest("id", { data: "hello" }),
@@ -104,7 +117,7 @@ describe("kwery", () => {
     });
 
     test("all mutations passed to config are available mutate function import", () => {
-      mutate((meutasions) => {
+      mutate(meutasions => {
         expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
         expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
           mutations.updateRequest("id", { data: "hello" }),
@@ -116,7 +129,7 @@ describe("kwery", () => {
       let message = "resolved";
       let mutations = {
         resolvedMutation(data) {
-          return new Promise((resolve) => {
+          return new Promise(resolve => {
             setTimeout(resolve, 1000, data);
           });
         },
@@ -124,13 +137,13 @@ describe("kwery", () => {
 
       let client = createKwery({ mutations });
 
-      let resp = client.mutate((mutations) => mutations.resolvedMutation(message));
+      let resp = client.mutate(mutations => mutations.resolvedMutation(message));
 
-      expect(resp.status).toEqual(STATUSES.pending);
+      expect(resp.status).toEqual(Data.STATUSES.pending);
 
       await mutations.resolvedMutation();
 
-      expect(resp.status).toEqual(STATUSES.success);
+      expect(resp.status).toEqual(Data.STATUSES.success);
       expect(resp.data).toEqual(message);
     });
 
@@ -146,13 +159,13 @@ describe("kwery", () => {
 
       let client = createKwery({ mutations });
 
-      let resp = client.mutate((mutations) => mutations.rejectedMutation(message));
+      let resp = client.mutate(mutations => mutations.rejectedMutation(message));
 
-      expect(resp.status).toEqual(STATUSES.pending);
+      expect(resp.status).toEqual(Data.STATUSES.pending);
 
-      await mutations.rejectedMutation().catch((error) => error);
+      await mutations.rejectedMutation().catch(error => error);
 
-      expect(resp.status).toEqual(STATUSES.error);
+      expect(resp.status).toEqual(Data.STATUSES.error);
       expect(resp.data).toEqual(message);
     });
   });

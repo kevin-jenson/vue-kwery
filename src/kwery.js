@@ -1,34 +1,29 @@
 import { observable } from "vue";
+import Data from "./data";
 
 const store = new Map();
-
-export const STATUSES = {
-  pending: "PENDING",
-  error: "ERROR",
-  success: "SUCCESS",
-};
 
 function resolve(key, cb) {
   if (store.has(key)) {
     return store.get(key);
   }
 
-  let data = observable({ status: STATUSES.pending, data: null });
+  let data = observable(new Data());
 
   let result = cb();
 
   if (typeof result.then === "function") {
     result
       .then((response) => {
-        data.status = STATUSES.success;
+        data.status = Data.STATUSES.success;
         data.data = response;
       })
       .catch((error) => {
-        data.status = STATUSES.error;
+        data.status = Data.STATUSES.error;
         data.data = error;
       });
   } else {
-    data.status === STATUSES.success;
+    data.status === Data.STATUSES.success;
     data.data = result;
   }
 
@@ -37,62 +32,59 @@ function resolve(key, cb) {
   return store.get(key);
 }
 
-const kweries = new Map();
+const kweries = {};
 function addToKweries(client, queries) {
   for (let key in queries) {
-    let cb;
-    let _cb = queries[key];
-    let argsCount = _cb.length;
+    let query = queries[key];
+    let argsCount = query.length;
 
     if (client) {
+      query = (...args) => query(client, ...args);
       argsCount -= 1;
-      cb = function (...args) {
-        return _cb(client, ...args);
-      };
-    } else {
-      cb = _cb;
     }
 
-    if (argsCount > 0) {
-      function kwery(...args) {
-        return resolve(key, () => cb(...args));
-      }
+    Object.defineProperty(kweries, key, {
+      get() {
+        if (argsCount > 0) {
+          return function (...args) {
+            return resolve(key, () => query(...args));
+          };
+        }
 
-      kweries.set(key, kwery);
-    } else {
-      kweries.set(key, resolve(key, cb));
-    }
+        return resolve(key, query);
+      },
+    });
   }
 }
 
 export function query(cb) {
-  return cb(Object.fromEntries(kweries));
+  return cb(kweries);
 }
 
 function statelessResolve(cb) {
-  let data = observable({ status: STATUSES.pending, data: null });
+  let data = observable({ status: Data.STATUSES.pending, data: null });
 
   let result = cb();
 
   if (typeof result.then === "function") {
     result
       .then((response) => {
-        data.status = STATUSES.success;
+        data.status = Data.STATUSES.success;
         data.data = response;
       })
       .catch((error) => {
-        data.status = STATUSES.error;
+        data.status = Data.STATUSES.error;
         data.data = error;
       });
   } else {
-    data.status = STATUSES.success;
+    data.status = Data.STATUSES.success;
     data.data = result;
   }
 
   return data;
 }
 
-const meutasions = new Map();
+const meutasions = {};
 function addToMutations(client, mutations) {
   for (let key in mutations) {
     let mutation = mutations[key];
@@ -104,12 +96,12 @@ function addToMutations(client, mutations) {
       return statelessResolve(() => mutation(...args));
     }
 
-    meutasions.set(key, mutationWrapper);
+    meutasions[key] = mutationWrapper;
   }
 }
 
 export function mutate(cb) {
-  return cb(Object.fromEntries(meutasions));
+  return cb(meutasions);
 }
 
 function createKwery({ queries, mutations, client }) {
