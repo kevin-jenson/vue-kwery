@@ -1,36 +1,5 @@
 import { observable } from "vue";
-import Data from "./data";
-
-const store = new Map();
-
-function resolve(key, cb) {
-  if (store.has(key)) {
-    return store.get(key);
-  }
-
-  let data = observable(new Data());
-
-  let result = cb();
-
-  if (typeof result.then === "function") {
-    result
-      .then((response) => {
-        data.status = Data.STATUSES.success;
-        data.data = response;
-      })
-      .catch((error) => {
-        data.status = Data.STATUSES.error;
-        data.data = error;
-      });
-  } else {
-    data.status === Data.STATUSES.success;
-    data.data = result;
-  }
-
-  store.set(key, data);
-
-  return store.get(key);
-}
+import Kwery from "./data";
 
 const kweries = {};
 function addToKweries(client, queries) {
@@ -45,13 +14,15 @@ function addToKweries(client, queries) {
 
     Object.defineProperty(kweries, key, {
       get() {
+        let kwery = new Kwery({ key, resolver: query });
+
         if (argsCount > 0) {
           return function (...args) {
-            return resolve(key, () => query(...args));
+            return kwery.fetchData(...args);
           };
         }
 
-        return resolve(key, query);
+        return kwery.fetchData();
       },
     });
   }
@@ -62,22 +33,22 @@ export function query(cb) {
 }
 
 function statelessResolve(cb) {
-  let data = observable({ status: Data.STATUSES.pending, data: null });
+  let data = observable({ status: Kwery.STATUSES.pending, data: null });
 
   let result = cb();
 
   if (typeof result.then === "function") {
     result
-      .then((response) => {
-        data.status = Data.STATUSES.success;
+      .then(response => {
+        data.status = Kwery.STATUSES.success;
         data.data = response;
       })
-      .catch((error) => {
-        data.status = Data.STATUSES.error;
+      .catch(error => {
+        data.status = Kwery.STATUSES.error;
         data.data = error;
       });
   } else {
-    data.status = Data.STATUSES.success;
+    data.status = Kwery.STATUSES.success;
     data.data = result;
   }
 

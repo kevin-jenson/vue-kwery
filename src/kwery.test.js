@@ -87,6 +87,49 @@ describe("kwery", () => {
       expect(resp.status).toEqual(Data.STATUSES.error);
       expect(resp.data).toEqual(data);
     });
+
+    test("will fetch first time and pull from cache sequential requests", () => {
+      let queries = {
+        cachedRequest: jest.fn(() => "cached request message"),
+      };
+
+      let client = createKwery({ queries });
+
+      let res = client.query(kweries => kweries.cachedRequest);
+      let res1 = client.query(kweries => kweries.cachedRequest);
+
+      expect(res).toEqual(res1);
+      expect(queries.cachedRequest).toHaveBeenCalledTimes(1);
+    });
+
+    test("refetch will call query twice", () => {
+      let queries = {
+        multipleCalledRequest: jest.fn(() => "cached request message"),
+      };
+
+      let client = createKwery({ queries });
+
+      let res = client.query(kweries => kweries.multipleCalledRequest);
+      res.refetch();
+
+      expect(queries.multipleCalledRequest).toHaveBeenCalledTimes(2);
+    });
+
+    test("refetch will call query twice with parameters", () => {
+      let queries = {
+        mutlCalledReqWithParams: jest.fn(message => message),
+      };
+
+      let client = createKwery({ queries });
+
+      let message1 = "message1";
+      let message2 = "message2";
+      let res = client.query(kweries => kweries.mutlCalledReqWithParams(message1));
+      res.refetch(message2);
+
+      expect(res.data).toEqual(message2);
+      expect(queries.mutlCalledReqWithParams).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe("meutasions", () => {
