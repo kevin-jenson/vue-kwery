@@ -1,5 +1,5 @@
 import createKwery, { query, mutate } from "./kwery";
-import Data from "./data";
+import Kwery from "./data";
 
 describe("kwery", () => {
   describe("kweries", () => {
@@ -60,11 +60,11 @@ describe("kwery", () => {
 
       let resp = client.query(kweries => kweries.resolvedRequest);
 
-      expect(resp.status).toEqual(Data.STATUSES.pending);
+      expect(resp.status).toEqual(Kwery.STATUSES.pending);
 
       await resolvedRequest();
 
-      expect(resp.status).toEqual(Data.STATUSES.success);
+      expect(resp.status).toEqual(Kwery.STATUSES.success);
       expect(resp.data).toEqual(data);
     });
 
@@ -80,11 +80,11 @@ describe("kwery", () => {
 
       let resp = client.query(kweries => kweries.rejectedRequest);
 
-      expect(resp.status).toEqual(Data.STATUSES.pending);
+      expect(resp.status).toEqual(Kwery.STATUSES.pending);
 
       await rejectedRequest().catch(error => error);
 
-      expect(resp.status).toEqual(Data.STATUSES.error);
+      expect(resp.status).toEqual(Kwery.STATUSES.error);
       expect(resp.data).toEqual(data);
     });
 
@@ -129,6 +129,36 @@ describe("kwery", () => {
 
       expect(res.data).toEqual(message2);
       expect(queries.mutlCalledReqWithParams).toHaveBeenCalledTimes(2);
+    });
+
+    test("refetch will reset status to pending while data is being fetched", async () => {
+      let queries = {
+        longRefetchRequest(message) {
+          return new Promise(resolve => setTimeout(resolve, 1000, message));
+        },
+      };
+
+      createKwery({ queries });
+
+      let message1 = "message1";
+      let message2 = "message2";
+      let res = query(kweries => kweries.longRefetchRequest(message1));
+
+      expect(res.status).toEqual(Kwery.STATUSES.pending);
+
+      await queries.longRefetchRequest();
+
+      expect(res.data).toEqual(message1);
+      expect(res.status).toEqual(Kwery.STATUSES.success);
+
+      res.refetch(message2);
+
+      expect(res.status).toEqual(Kwery.STATUSES.pending);
+
+      await queries.longRefetchRequest();
+
+      expect(res.data).toEqual(message2);
+      expect(res.status).toEqual(Kwery.STATUSES.success);
     });
   });
 
@@ -182,11 +212,11 @@ describe("kwery", () => {
 
       let resp = client.mutate(mutations => mutations.resolvedMutation(message));
 
-      expect(resp.status).toEqual(Data.STATUSES.pending);
+      expect(resp.status).toEqual(Kwery.STATUSES.pending);
 
       await mutations.resolvedMutation();
 
-      expect(resp.status).toEqual(Data.STATUSES.success);
+      expect(resp.status).toEqual(Kwery.STATUSES.success);
       expect(resp.data).toEqual(message);
     });
 
@@ -204,11 +234,11 @@ describe("kwery", () => {
 
       let resp = client.mutate(mutations => mutations.rejectedMutation(message));
 
-      expect(resp.status).toEqual(Data.STATUSES.pending);
+      expect(resp.status).toEqual(Kwery.STATUSES.pending);
 
       await mutations.rejectedMutation().catch(error => error);
 
-      expect(resp.status).toEqual(Data.STATUSES.error);
+      expect(resp.status).toEqual(Kwery.STATUSES.error);
       expect(resp.data).toEqual(message);
     });
   });

@@ -89,8 +89,10 @@ let updatedUser = mutation(mutations => mutations.updateUser(42));
 
 // usage in vue component
 export default {
-	data: {
-		userId: 42
+	data() {
+		return {
+			userId: 42
+		}
 	},
 	methods: {
 		updateUser() {
@@ -98,4 +100,31 @@ export default {
 		}
 	}
 };
+```
+
+## reactive instance
+
+There will be some utilities available on the reactive instance returned from query.
+
+### refetch
+
+Will invalidate cached data for key and will reset the status to `pending`;
+
+```JavaScript
+export default {
+	data() {
+		return {
+			user: null,
+		}
+	},
+	methods: {
+		getUser(id) {
+			if (this.user) {
+				this.user = this.$query(queries => queries.user(id));
+			} else {
+				this.user.refetch(id);
+			}
+		}
+	}
+}
 ```
