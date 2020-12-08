@@ -66,8 +66,8 @@ let users = query(queries => queries.users);
 
 // usage in vue component
 export default {
-	methods: {
-		getUsers() {
+	computed: {
+		users() {
 			return this.$query(queries => queries.users);
 		}
 	}
@@ -111,19 +111,17 @@ There will be some utilities available on the reactive instance returned from qu
 Will invalidate cached data for key and will reset the status to `pending`;
 
 ```JavaScript
+let userId = 1;
+
 export default {
-	data() {
-		return {
-			user: null,
+	computed: {
+		user() {
+			return this.$query(queries => queries.user(userId));
 		}
 	},
 	methods: {
-		getUser(id) {
-			if (this.user) {
-				this.user = this.$query(queries => queries.user(id));
-			} else {
-				this.user.refetch(id);
-			}
+		getNextUser(id) {
+			this.user.refetch(id);
 		}
 	}
 }
