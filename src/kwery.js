@@ -1,5 +1,5 @@
 import { observable } from "vue";
-import Kwery from "./data";
+import { Kwery, Mutation } from "./data";
 
 const kweries = {};
 function addToKweries(client, queries) {
@@ -14,7 +14,7 @@ function addToKweries(client, queries) {
 
     Object.defineProperty(kweries, key, {
       get() {
-        let kwery = new Kwery({ key, resolver: query });
+        let kwery = observable(new Kwery({ key, resolver: query }));
 
         if (argsCount > 0) {
           return function (...args) {
@@ -32,39 +32,19 @@ export function query(cb) {
   return cb(kweries);
 }
 
-function statelessResolve(cb) {
-  let data = observable({ status: Kwery.STATUSES.pending, data: null });
-
-  let result = cb();
-
-  if (typeof result.then === "function") {
-    result
-      .then(response => {
-        data.status = Kwery.STATUSES.success;
-        data.data = response;
-      })
-      .catch(error => {
-        data.status = Kwery.STATUSES.error;
-        data.data = error;
-      });
-  } else {
-    data.status = Kwery.STATUSES.success;
-    data.data = result;
-  }
-
-  return data;
-}
-
 const meutasions = {};
 function addToMutations(client, mutations) {
   for (let key in mutations) {
     let mutation = mutations[key];
 
+    if (client) {
+      mutation = (...args) => mutation(client, ...args);
+    }
+
     function mutationWrapper(...args) {
-      if (client) {
-        return statelessResolve(() => mutation(client, ...args));
-      }
-      return statelessResolve(() => mutation(...args));
+      let mut = observable(new Mutation({ key, resolver: mutation }));
+
+      return mut.fetchData(...args);
     }
 
     meutasions[key] = mutationWrapper;

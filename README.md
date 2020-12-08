@@ -126,3 +126,52 @@ export default {
 	}
 }
 ```
+
+### update
+
+```JavaScript
+update(cacheKey: String, updaterFn: (cacheValue: Any) => Any): Instance
+```
+
+Gives access directly to the cache to update a value at a specific key based on mutation;
+
+```JavaScript
+export default {
+	computed: {
+		todos() {
+			return this.$query(queries => queries.todos);
+		}
+	},
+	methods() {
+		addTodo() {
+			let newTodo = this.$mutate(mutations => mutations.addTodo());
+			newTodo.update('todos', todos => {
+				return [...todos, newTodo];
+			});
+
+			return newTodo;
+		}
+	}
+}
+```
+
+### invalidate
+
+```JavaScript
+invalidate(cacheKey: String): Intance
+```
+
+Will remove the instance from the cache based on the key and force a refetch of that query next use.
+
+```JavaScript
+export default {
+	methods() {
+		invalidateTodos() {
+			let newTodo = this.$mutate(mutations => mutations.addTodo());
+			newTodo.invalidate('todos');
+
+			return newTodo;
+		}
+	}
+}
+```
