@@ -3,14 +3,13 @@ import createKwery, * as VueKwery from "./src/kwery";
 function install(Vue, { queries, mutations, client }) {
   warnings({ queries, mutations });
 
-  let kwery = createKwery({ queries, mutations, client });
+  let { query, mutate } = createKwery({ queries, mutations, client });
 
-  for (let method in kwery) {
-    Vue.prototype[`$${method}`] = kwery[method];
-  }
+  Vue.prototype.$query = query;
+  Vue.prototype.$mutate = mutate;
 }
 
-function warnings({ queries, mutations }) {
+function warnings({ queries = {}, mutations = {} }) {
   if (Object.keys(queries).length + Object.keys(mutations) === 0) {
     console.warn("Must provide at least one query or mutation to the options object");
   }
