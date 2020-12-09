@@ -258,6 +258,9 @@ describe("kwery", () => {
         [mutationSym](message) {
           return message;
         },
+        longMutation(message) {
+          return new Promise(resolve => setTimeout(resolve, 500, message));
+        },
       };
 
       createKwery({ mutations, queries });
@@ -275,13 +278,30 @@ describe("kwery", () => {
 
         expect(mutRes.data).toEqual("mutation");
 
-        mutRes.update(querySym, value => value + " something else");
+        mutRes.update(querySym, value => (value.data += " something else"));
 
         expect(queryRes.data).toEqual("query something else");
       });
 
+      test("mutation instance update will update query store after success", async () => {
+        let queryRes = query(kweries => kweries[querySym]("query"));
+
+        expect(queryRes.data).toEqual("query");
+
+        let mut = "this is a message from the future";
+        let mutRes = mutate(mutations => mutations.longMutation("this is a message from the future")).update(
+          querySym,
+          value => (value.data += mutRes.data),
+        );
+
+        await mutations.longMutation();
+
+        expect(mutRes.data).toEqual(mut);
+
+        expect(queryRes.data).toEqual("query" + mut);
+      });
+
       test("mutations instance invalidate will force a refetch", () => {
-        let spy = jest.spyOn(queries, querySym);
         let queryRes = query(kweries => kweries[querySym]("query"));
 
         expect(queryRes.data).toEqual("query");
@@ -293,6 +313,7 @@ describe("kwery", () => {
         mutRes.invalidate(querySym);
 
         expect(queryRes.data).toEqual(null);
+        expect(Kwery.store.has(querySym)).toBe(false);
       });
     });
   });

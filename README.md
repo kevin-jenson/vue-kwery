@@ -144,9 +144,8 @@ export default {
 	},
 	methods() {
 		addTodo() {
-			let newTodo = this.$mutate(mutations => mutations.addTodo());
-			newTodo.update('todos', todos => {
-				return [...todos, newTodo];
+			let newTodo = this.$mutate(mutations => mutations.addTodo()).update('todos', todos => {
+				return [...todos, newTodo.data];
 			});
 
 			return newTodo;

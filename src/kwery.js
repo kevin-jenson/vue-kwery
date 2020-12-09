@@ -28,7 +28,8 @@ function addToKweries(client, queries) {
   }
 }
 
-export function query(cb) {
+export function query(cb, options) {
+  Kwery.addOptionsToInstance(options);
   return cb(kweries);
 }
 
