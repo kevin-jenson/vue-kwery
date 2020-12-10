@@ -8,7 +8,7 @@ class Base {
 
   constructor({ defaultValue = null, key, resolver }) {
     this.defaultValue = defaultValue;
-    this.data = defaultValue;
+    this._data = defaultValue;
     this.status = Base.STATUSES.uninitialized;
     this.key = key;
     this.resolver = resolver;
@@ -32,12 +32,12 @@ class Base {
 
   _success(result) {
     this.status = Base.STATUSES.success;
-    this.data = result;
+    this._data = result;
   }
 
   _error(error) {
     this.status = Base.STATUSES.error;
-    this.data = error;
+    this._data = error;
   }
 }
 
@@ -50,7 +50,7 @@ export class Kwery extends Base {
     let ref = { data: instance.data };
     updater(ref);
 
-    instance.data = ref.data;
+    instance._data = ref.data;
 
     Kwery.store.set(key, instance);
   }
@@ -60,7 +60,7 @@ export class Kwery extends Base {
 
     let instance = store.get(key);
 
-    instance.data = instance.defaultValue;
+    instance._data = instance.defaultValue;
     instance.status = STATUSES.uninitialized;
 
     store.set(key, instance);
@@ -71,26 +71,22 @@ export class Kwery extends Base {
     Kwery.store.clear();
   }
 
-  static addOptionsToInstance(options) {
-    let { store } = Kwery;
-
-    for (let key in options) {
-      if (!store.has(key)) {
-        continue;
-      } else {
-        let instance = store.get(key);
-        let { default: defaultValue } = options[key];
-
-        instance.defaultValue = defaultValue;
-      }
-    }
-  }
-
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
 
     this._args = null;
     this._intervalId = null;
+  }
+
+  get data() {
+    let { status } = this;
+    let { STATUSES } = Kwery;
+
+    if (status === STATUSES.pending || status === STATUSES.uninitialized) {
+      return this.defaultValue;
+    }
+
+    return this._data;
   }
 
   fetchData(...args) {
@@ -129,12 +125,21 @@ export class Kwery extends Base {
       clearInterval(this._intervalId);
     }
   }
+
+  default(value) {
+    this.defaultValue = value;
+    return this;
+  }
 }
 
 export class Mutation extends Base {
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
     this.onSuccessQueue = new Set();
+  }
+
+  get data() {
+    return this._data;
   }
 
   fetchData(...args) {

@@ -14,7 +14,7 @@ function addToKweries(client, queries) {
 
     Object.defineProperty(kweries, key, {
       get() {
-        let kwery = observable(new Kwery({ key, resolver: query }));
+        let kwery = new Kwery({ key, resolver: query });
 
         if (argsCount > 0) {
           return (...args) => kwery.fetchData(...args);
@@ -26,9 +26,8 @@ function addToKweries(client, queries) {
   }
 }
 
-export function query(cb, options) {
-  Kwery.addOptionsToInstance(options);
-  return cb(kweries);
+export function query(cb) {
+  return observable(cb(kweries));
 }
 
 const meutasions = {};

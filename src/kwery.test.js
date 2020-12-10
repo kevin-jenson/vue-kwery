@@ -1,6 +1,14 @@
 import createKwery, { query, mutate } from "./kwery";
 import { Kwery } from "./data";
 
+function sleep(seconds, result) {
+  return new Promise(resolve => setTimeout(resolve, seconds, result));
+}
+
+function nightmare(seconds, result) {
+  return new Promise((_resolve, reject) => setTimeout(reject, seconds, result));
+}
+
 describe("kwery", () => {
   let { STATUSES } = Kwery;
 
@@ -58,9 +66,7 @@ describe("kwery", () => {
     test("kweries are updated when promise is resolved", async () => {
       let data = "This has resolved";
       function resolvedRequest() {
-        return new Promise(resolve => {
-          setTimeout(resolve, 500, data);
-        });
+        return sleep(500, data);
       }
 
       let client = createKwery({ queries: { resolvedRequest } });
@@ -78,9 +84,7 @@ describe("kwery", () => {
     test("kweries are updated when promise is rejected", async () => {
       let data = "This has rejected";
       function rejectedRequest() {
-        return new Promise((_resolve, reject) => {
-          setTimeout(reject, 500, data);
-        });
+        return nightmare(500, data);
       }
 
       let client = createKwery({ queries: { rejectedRequest } });
@@ -141,7 +145,7 @@ describe("kwery", () => {
     test("refetch will reset status to pending while data is being fetched", async () => {
       let queries = {
         longRefetchRequest(message) {
-          return new Promise(resolve => setTimeout(resolve, 500, message));
+          return sleep(500, message);
         },
       };
 
@@ -198,10 +202,32 @@ describe("kwery", () => {
         res.interval(interval);
 
         let timeout = 1100;
-        await new Promise(resolve => setTimeout(resolve, timeout));
+        await sleep(timeout);
 
         res.stopInterval();
         expect(res.refetch).toHaveBeenCalledTimes(timeout / interval - 1);
+      });
+    });
+
+    describe("options", () => {
+      let queries = {
+        queryWithDefaultValue() {
+          return sleep(500, "message");
+        },
+      };
+
+      beforeAll(() => {
+        createKwery({ queries });
+      });
+
+      test("should set default value on instance", async () => {
+        let res = query(queries => queries.queryWithDefaultValue).default([]);
+
+        expect(res.data).toEqual([]);
+
+        await sleep(500);
+
+        expect(res.data).toEqual("message");
       });
     });
   });
@@ -246,9 +272,7 @@ describe("kwery", () => {
       let message = "resolved";
       let mutations = {
         resolvedMutation(data) {
-          return new Promise(resolve => {
-            setTimeout(resolve, 500, data);
-          });
+          return sleep(500, data);
         },
       };
 
@@ -268,9 +292,7 @@ describe("kwery", () => {
       let message = "rejected";
       let mutations = {
         rejectedMutation(data) {
-          return new Promise((_resolve, reject) => {
-            setTimeout(reject, 500, data);
-          });
+          return nightmare(500, data);
         },
       };
 
@@ -301,7 +323,7 @@ describe("kwery", () => {
           return message;
         },
         longMutation(message) {
-          return new Promise(resolve => setTimeout(resolve, 500, message));
+          return sleep(500, message);
         },
       };
 
