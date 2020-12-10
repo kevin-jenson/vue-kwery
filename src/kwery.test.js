@@ -183,6 +183,9 @@ describe("kwery", () => {
     describe("instance methods", () => {
       let queries = {
         needsRefetching: jest.fn((key, message) => [key, message]),
+        queryWithDefaultValue() {
+          return sleep(500, "message");
+        },
       };
 
       beforeAll(() => {
@@ -214,18 +217,6 @@ describe("kwery", () => {
 
         res.stopInterval();
         expect(res.refetch).toHaveBeenCalledTimes(timeout / interval - 1);
-      });
-    });
-
-    describe("options", () => {
-      let queries = {
-        queryWithDefaultValue() {
-          return sleep(500, "message");
-        },
-      };
-
-      beforeAll(() => {
-        createKwery({ queries });
       });
 
       test("should set default value on instance", async () => {
