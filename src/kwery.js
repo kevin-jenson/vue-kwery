@@ -17,9 +17,7 @@ function addToKweries(client, queries) {
         let kwery = observable(new Kwery({ key, resolver: query }));
 
         if (argsCount > 0) {
-          return function (...args) {
-            return kwery.fetchData(...args);
-          };
+          return (...args) => kwery.fetchData(...args);
         }
 
         return kwery.fetchData();

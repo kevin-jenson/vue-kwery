@@ -4,6 +4,11 @@ import { Kwery } from "./data";
 describe("kwery", () => {
   let { STATUSES } = Kwery;
 
+  afterEach(() => {
+    Kwery.clear();
+    jest.clearAllMocks();
+  });
+
   describe("kweries", () => {
     let queries = {
       requests() {
@@ -162,6 +167,42 @@ describe("kwery", () => {
       expect(res.data).toEqual(message2);
       expect(res.status).toEqual(STATUSES.success);
     });
+
+    describe("instance methods", () => {
+      let queries = {
+        needsRefetching: jest.fn((key, message) => [key, message]),
+      };
+
+      beforeAll(() => {
+        createKwery({ queries });
+      });
+
+      test("refetch will use old args if none are passed and they were passed on original query", () => {
+        let res = query(kweries => kweries.needsRefetching("key", "message"));
+        expect(res.data).toEqual(["key", "message"]);
+        res.refetch();
+
+        expect(queries.needsRefetching).toHaveBeenCalledTimes(2);
+        expect(res.data).toEqual(["key", "message"]);
+
+        res.refetch("new key", "new message");
+        expect(res.data).toEqual(["new key", "new message"]);
+      });
+
+      test("interval will call refetch at specified interval", async () => {
+        let res = query(kweries => kweries.needsRefetching("id", "user"));
+        res.refetch = jest.fn(() => {
+          res.refetch.bind(res);
+        });
+        res.interval(100);
+
+        let interval = 1100;
+        await new Promise(resolve => setTimeout(resolve, interval));
+
+        res.stopInterval();
+        expect(res.refetch).toHaveBeenCalledTimes(interval / 10 - 1);
+      });
+    });
   });
 
   describe("meutasions", () => {
@@ -264,10 +305,6 @@ describe("kwery", () => {
       };
 
       createKwery({ mutations, queries });
-
-      afterEach(() => {
-        Kwery.clear();
-      });
 
       test("mutation instance update will update query store", () => {
         let queryRes = query(kweries => kweries[querySym]("query"));

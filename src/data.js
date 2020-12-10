@@ -22,20 +22,20 @@ class Base {
     let result = this.resolver(...args);
 
     if (result && typeof result.then === "function") {
-      result.then(this.success.bind(this)).catch(this.error.bind(this));
+      result.then(this._success.bind(this)).catch(this._error.bind(this));
     } else {
-      this.success(result);
+      this._success(result);
     }
 
     return this;
   }
 
-  success(result) {
+  _success(result) {
     this.status = Base.STATUSES.success;
     this.data = result;
   }
 
-  error(error) {
+  _error(error) {
     this.status = Base.STATUSES.error;
     this.data = error;
   }
@@ -88,6 +88,9 @@ export class Kwery extends Base {
 
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
+
+    this._args = null;
+    this._intervalId = null;
   }
 
   fetchData(...args) {
@@ -98,23 +101,40 @@ export class Kwery extends Base {
       return store.get(key);
     }
 
+    this._args = args;
     this.baseFetch(...args);
 
     store.set(key, this);
 
-    return store.get(key);
+    return this;
   }
 
   refetch(...args) {
     Kwery.store.delete(this.key);
-    return this.fetchData(...args);
+    if (args.length) {
+      this._args = args;
+    }
+
+    return this.fetchData(...(this._args || []));
+  }
+
+  interval(interval) {
+    this.stopInterval();
+
+    this._intervalId = setInterval(this.refetch, interval);
+  }
+
+  stopInterval() {
+    if (this._intervalId) {
+      clearInterval(this._intervalId);
+    }
   }
 }
 
 export class Mutation extends Base {
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
-    this.onSuccessQueue = [];
+    this.onSuccessQueue = new Set();
   }
 
   fetchData(...args) {
@@ -123,9 +143,10 @@ export class Mutation extends Base {
     return this;
   }
 
-  success(result) {
-    super.success(result);
+  _success(result) {
+    super._success(result);
     this.onSuccessQueue.forEach(cb => cb());
+    this.onSuccessQueue.clear();
   }
 
   update(key, updater) {
@@ -134,13 +155,18 @@ export class Mutation extends Base {
     if (this.status === Base.STATUSES.success) {
       cb();
     } else {
-      this.onSuccessQueue.push(cb);
+      this.onSuccessQueue.add(cb);
     }
 
     return this;
   }
 
   invalidate(key) {
-    Kwery.invalidateInstance(key);
+    let cb = () => Kwery.invalidateInstance(key);
+    if (this.status === Base.STATUSES.success) {
+      cb();
+    } else {
+      this.onSuccessQueue.add(cb);
+    }
   }
 }
