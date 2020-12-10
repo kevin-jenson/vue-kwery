@@ -172,6 +172,14 @@ describe("kwery", () => {
       expect(res.status).toEqual(STATUSES.success);
     });
 
+    test("should not add resolvers to kweries if not a function", () => {
+      let notAFunction = "not a function";
+
+      createKwery({ queries: { notAFunction } });
+
+      query(kweries => expect(kweries.notAFunction).toBeUndefined());
+    });
+
     describe("instance methods", () => {
       let queries = {
         needsRefetching: jest.fn((key, message) => [key, message]),

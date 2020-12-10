@@ -5,6 +5,13 @@ const kweries = {};
 function addToKweries(client, queries) {
   for (let key in queries) {
     let query = queries[key];
+
+    let type = typeof query;
+    if (type !== "function") {
+      console.warn(`query resolver must of type function recieved ${type} for ${key}`);
+      continue;
+    }
+
     let argsCount = query.length;
 
     if (client) {
