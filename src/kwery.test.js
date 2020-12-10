@@ -194,13 +194,14 @@ describe("kwery", () => {
         res.refetch = jest.fn(() => {
           res.refetch.bind(res);
         });
-        res.interval(100);
+        let interval = 100;
+        res.interval(interval);
 
-        let interval = 1100;
-        await new Promise(resolve => setTimeout(resolve, interval));
+        let timeout = 1100;
+        await new Promise(resolve => setTimeout(resolve, timeout));
 
         res.stopInterval();
-        expect(res.refetch).toHaveBeenCalledTimes(interval / 10 - 1);
+        expect(res.refetch).toHaveBeenCalledTimes(timeout / interval - 1);
       });
     });
   });
