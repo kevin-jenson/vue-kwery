@@ -7,8 +7,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint",
-    "build": "rimraf ./lib && babel --extensions .js --ignore ./src/**/tests/**/* ./src --out-dir lib",
-    "publish": "npm run build; npm publish"
+    "build": "rimraf ./lib && babel --extensions .js --ignore ./src/**/tests/**/* ./src --out-dir lib"
   },
   "repository": {
     "type": "git",
