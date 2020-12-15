@@ -1,6 +1,6 @@
 {
   "name": "vue-kwery",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Vue state management for http requests",
   "main": "lib/index.js",
   "scripts": {
