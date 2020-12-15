@@ -41,6 +41,9 @@ export function query(key, args, options) {
   return _reactive(kwery.fetchData(...args));
 }
 
+query.invalidateQuery = Kwery.invalidateQuery;
+query.setQueryData = Kwery.updateStore;
+
 const meutasions = new Map();
 function addToMutations(client, mutations) {
   for (let key in mutations) {
@@ -50,13 +53,29 @@ function addToMutations(client, mutations) {
       mutation = (...args) => mutation(client, ...args);
     }
 
-    let mut = new Mutation({ key, resolver: mutation });
-    meutasions.set(key, mut);
+    meutasions.set(key, mutation);
   }
 }
 
-export function mutate(cb) {
-  return _reactive(cb(meutasions));
+export function mutate(key, args, options) {
+  let resolver = meutasions.get(key);
+
+  if (!resolver) {
+    throw new Error(`Query ${key} not registered`);
+  }
+
+  if (!Array.isArray(args)) {
+    args = options;
+    args = [];
+  }
+
+  let mutation = new Mutation({ key, resolver });
+
+  if (options) {
+    mutation._setOptions(options);
+  }
+
+  return _reactive(mutation.fetchData(...args));
 }
 
 function createKwery({ queries, mutations, client, Vue }) {

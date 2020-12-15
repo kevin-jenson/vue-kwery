@@ -7,11 +7,20 @@ class Base {
   };
 
   constructor({ key, resolver }) {
+    this._error;
     this.defaultValue = null;
     this._data = null;
     this.status = Base.STATUSES.uninitialized;
     this.key = key;
     this.resolver = resolver;
+  }
+
+  get error() {
+    if (this.status === Kwery.STATUSES.error) {
+      return this._error;
+    }
+
+    return undefined;
   }
 
   baseFetch(...args) {
@@ -37,34 +46,19 @@ class Base {
 
   _error(error) {
     this.status = Base.STATUSES.error;
-    this._data = error;
+    this._error = error;
   }
 }
 
 export class Kwery extends Base {
   static store = new Map();
 
-  static updateStore(key, updater) {
-    let instance = Kwery.store.get(key);
-
-    let ref = { data: instance.data };
-    updater(ref);
-
-    instance._data = ref.data;
-
-    Kwery.store.set(key, instance);
+  static updateStore(key, data) {
+    Kwery.store.set(key, data);
   }
 
-  static invalidateInstance(key) {
-    let { store, STATUSES } = Kwery;
-
-    let instance = store.get(key);
-
-    instance._data = instance.defaultValue;
-    instance.status = STATUSES.uninitialized;
-
-    store.set(key, instance);
-    store.delete(key);
+  static invalidateQuery(key) {
+    Kwery.store.delete(key);
   }
 
   static clear() {
@@ -80,14 +74,14 @@ export class Kwery extends Base {
   }
 
   get data() {
-    let { status } = this;
+    let { status, defaultValue, key } = this;
     let { STATUSES } = Kwery;
 
-    if (status === STATUSES.pending || status === STATUSES.uninitialized) {
-      return this.defaultValue;
+    if ((status === STATUSES.pending || status === STATUSES.uninitialized) && defaultValue !== undefined) {
+      return defaultValue;
     }
 
-    return this._data;
+    return Kwery.store.get(key);
   }
 
   _success(result) {
@@ -148,6 +142,7 @@ export class Mutation extends Base {
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
     this._successQueue = new Set();
+    this._errorQueue = new Set();
   }
 
   get data() {
@@ -155,35 +150,28 @@ export class Mutation extends Base {
   }
 
   fetchData(...args) {
-    this.baseFetch(...args);
-
-    return this;
+    return this.baseFetch(...args);
   }
 
   _success(result) {
     super._success(result);
-    this._successQueue.forEach(cb => cb());
+    this._successQueue.forEach(cb => cb(result));
     this._successQueue.clear();
   }
 
-  update(key, updater) {
-    let cb = () => Kwery.updateStore(key, updater);
-
-    if (this.status === Base.STATUSES.success) {
-      cb();
-    } else {
-      this._successQueue.add(cb);
-    }
-
-    return this;
+  _error(error) {
+    super._error(error);
+    this._errorQueue.forEach(cb => cb(error));
+    this._errorQueue.clear();
   }
 
-  invalidate(key) {
-    let cb = () => Kwery.invalidateInstance(key);
-    if (this.status === Base.STATUSES.success) {
-      cb();
-    } else {
-      this._successQueue.add(cb);
+  _setOptions(options) {
+    if (options.onSuccess) {
+      this._successQueue.add(options.onSuccess);
+    }
+
+    if (options.onError) {
+      this._errorQueue.add(options.onError);
     }
   }
 }

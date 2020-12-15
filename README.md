@@ -57,56 +57,39 @@ function users(axios) {
 Provides query resolvers and returns a reactive object updated by resolver
 
 ```JavaScript
-query(callback: (queries: Object) => Any)
+query(queryKey: String): Query
 
 // usage with imports
 import { query } from 'vue-kwery';
 
-let users = query(queries => queries.users);
+let users = query('queryKey');
 
 // usage in vue component
 export default {
 	computed: {
 		users() {
-			return this.$query(queries => queries.users);
+			return this.$query('queryKey');
 		}
 	}
 };
 ```
 
-## mutation
+### query Options
 
-Provides mutation resolves and returns reactive object updated by resolver
+options available to the query method are
 
-```JavaScript
-mutation(callback: (mutation: Object) => Any)
-
-// usage with imports
-import { mutation } from 'vue-kwery';
-
-let userId = 42;
-let updatedUser = mutation(mutations => mutations.updateUser(42));
-
-// usage in vue component
-export default {
-	data() {
-		return {
-			userId: 42
-		}
-	},
-	methods: {
-		updateUser() {
-			return this.$mutations(mutations => mutations updateUser(this.userId));
-		}
-	}
-};
+```TypeScript
+interface Options {
+	default: Any // the default value to be used for the query data,
+	interval: Number // if set will call query at set interval
+}
 ```
 
-## reactive instance
+### reactive instance
 
 There will be some utilities available on the reactive instance returned from query.
 
-### refetch
+#### refetch
 
 Will invalidate cached data for key and will reset the status to `pending`;
 
@@ -116,7 +99,7 @@ let userId = 1;
 export default {
 	computed: {
 		user() {
-			return this.$query(queries => queries.user(userId));
+			return this.$query("user", [userId]);
 		}
 	},
 	methods: {
@@ -127,11 +110,46 @@ export default {
 }
 ```
 
-### update
+## mutation
+
+Provides mutation resolves and returns reactive object updated by resolver
 
 ```JavaScript
-update(cacheKey: String, updaterFn: (cacheValue: Any) => Any): Instance
+mutation(mutationKey: String): Mutation
+
+// usage with imports
+import { mutation } from 'vue-kwery';
+
+let userId = 42;
+let updatedUser = mutation("updateUser", [42]);
+
+// usage in vue component
+export default {
+	data() {
+		return {
+			userId: 42
+		}
+	},
+	methods: {
+		updateUser() {
+			return this.$mutations("updateUser", [this.userId]);
+		}
+	}
+};
 ```
+
+### mutation options
+
+Options available to the mutation methods
+
+```TypeScript
+interface Options {
+	onSuccess: (data: MutationData) => void, // success callback used for side effects
+	onError: (error: MutationError) => void, // error callback used for side effects
+}
+```
+
+#### update query data on mutation result
 
 Gives access directly to the cache to update a value at a specific key based on mutation;
 
@@ -139,26 +157,22 @@ Gives access directly to the cache to update a value at a specific key based on 
 export default {
 	computed: {
 		todos() {
-			return this.$query(queries => queries.todos);
+			return this.$query("todos");
 		}
 	},
 	methods() {
 		addTodo() {
-			let newTodo = this.$mutate(mutations => mutations.addTodo()).update('todos', todos => {
-				todos.data = [...todos.data, newTodo.data];
+			let newTodo = this.$mutate("addTodo", {
+				onSuccess(data) {
+					this.$query.setQueryData("todos", [...this.todos, data]);
+				}
 			});
-
-			return newTodo;
 		}
 	}
 }
 ```
 
-### invalidate
-
-```JavaScript
-invalidate(cacheKey: String): Intance
-```
+#### invalidate query on mutation result
 
 Will remove the instance from the cache based on the key and force a refetch of that query next use.
 
@@ -166,10 +180,11 @@ Will remove the instance from the cache based on the key and force a refetch of 
 export default {
 	methods() {
 		invalidateTodos() {
-			let newTodo = this.$mutate(mutations => mutations.addTodo());
-			newTodo.invalidate('todos');
-
-			return newTodo;
+			let newTodo = this.$mutate("addTodo", {
+				onSuccess() {
+					this.$query.invalidateQuery("todos");
+				}
+			});
 		}
 	}
 }

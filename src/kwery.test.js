@@ -98,7 +98,7 @@ describe("kwery", () => {
       await rejectedRequest().catch(error => error);
 
       expect(resp.status).toEqual(STATUSES.error);
-      expect(resp.data).toEqual(data);
+      expect(resp.error).toEqual(data);
     });
 
     test("will fetch first time and pull from cache sequential requests", () => {
@@ -180,7 +180,11 @@ describe("kwery", () => {
 
       createKwery({ queries: { notAFunction }, Vue });
 
-      query(kweries => expect(kweries.notAFunction).toBeUndefined());
+      function shouldThrow() {
+        query("notAFunction");
+      }
+
+      expect(shouldThrow).toThrow();
     });
 
     describe("instance methods", () => {
@@ -249,21 +253,17 @@ describe("kwery", () => {
     });
 
     test("all mutatiions passed to config are available in client returned function", () => {
-      client.mutate(meutasions => {
-        expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
-        expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
-          mutations.updateRequest("id", { data: "hello" }),
-        );
-      });
+      let createdRequest = client.mutate("createRequest", ["hello"]);
+      let updatedRequest = client.mutate("updateRequest", ["id", { data: "hello" }]);
+      expect(createdRequest.data).toEqual(mutations.createRequest("hello"));
+      expect(updatedRequest.data).toEqual(mutations.updateRequest("id", { data: "hello" }));
     });
 
     test("all mutations passed to config are available mutate function import", () => {
-      mutate(meutasions => {
-        expect(meutasions.createRequest("hello").data).toEqual(mutations.createRequest("hello"));
-        expect(meutasions.updateRequest("id", { data: "hello" }).data).toEqual(
-          mutations.updateRequest("id", { data: "hello" }),
-        );
-      });
+      let createdRequest = mutate("createRequest", ["hello"]);
+      let updatedRequest = mutate("updateRequest", ["id", { data: "hello" }]);
+      expect(createdRequest.data).toEqual(mutations.createRequest("hello"));
+      expect(updatedRequest.data).toEqual(mutations.updateRequest("id", { data: "hello" }));
     });
 
     test("mutation updates when resolved", async () => {
@@ -276,7 +276,7 @@ describe("kwery", () => {
 
       let client = createKwery({ mutations, Vue });
 
-      let resp = client.mutate(mutations => mutations.resolvedMutation(message));
+      let resp = client.mutate("resolvedMutation", [message]);
 
       expect(resp.status).toEqual(STATUSES.pending);
 
@@ -296,14 +296,14 @@ describe("kwery", () => {
 
       let client = createKwery({ mutations, Vue });
 
-      let resp = client.mutate(mutations => mutations.rejectedMutation(message));
+      let resp = client.mutate("rejectedMutation", [message]);
 
       expect(resp.status).toEqual(STATUSES.pending);
 
       await mutations.rejectedMutation().catch(error => error);
 
       expect(resp.status).toEqual(STATUSES.error);
-      expect(resp.data).toEqual(message);
+      expect(resp.error).toEqual(message);
     });
 
     describe("instances", () => {
@@ -323,54 +323,82 @@ describe("kwery", () => {
         longMutation(message) {
           return sleep(500, message);
         },
+        longRejectedMut(message) {
+          return nightmare(500, message);
+        },
       };
 
       createKwery({ mutations, queries, Vue });
 
       test("mutation instance update will update query store", () => {
-        let queryRes = query(kweries => kweries[querySym]("query"));
+        let queryRes = query(querySym, ["query"]);
 
         expect(queryRes.data).toEqual("query");
 
-        let mutRes = mutate(mutations => mutations[mutationSym]("mutation"));
+        let mutRes = mutate(mutationSym, ["mutation"], {
+          onSuccess(data) {
+            query.setQueryData(querySym, data + " updated");
+          },
+        });
 
         expect(mutRes.data).toEqual("mutation");
 
-        mutRes.update(querySym, value => (value.data += " something else"));
-
-        expect(queryRes.data).toEqual("query something else");
+        expect(queryRes.data).toEqual("mutation updated");
       });
 
       test("mutation instance update will update query store after success", async () => {
-        let queryRes = query(kweries => kweries[querySym]("query"));
+        let queryRes = query(querySym, ["query"]);
 
         expect(queryRes.data).toEqual("query");
 
         let mut = "this is a message from the future";
-        let mutRes = mutate(mutations => mutations.longMutation("this is a message from the future")).update(
-          querySym,
-          value => (value.data += mutRes.data),
-        );
+        let appended = ", jk this is the past";
+        let mutRes = mutate("longMutation", ["this is a message from the future"], {
+          onSuccess(data) {
+            query.setQueryData(querySym, data + appended);
+          },
+        });
 
         await mutations.longMutation();
 
         expect(mutRes.data).toEqual(mut);
 
-        expect(queryRes.data).toEqual("query" + mut);
+        expect(queryRes.data).toEqual(mut + appended);
       });
 
       test("mutations instance invalidate will force a refetch", () => {
-        let queryRes = query(kweries => kweries[querySym]("query"));
+        let queryRes = query(querySym, ["query"]);
 
         expect(queryRes.data).toEqual("query");
 
-        let mutRes = mutate(mutations => mutations[mutationSym]("mutation"));
+        let mutRes = mutate(mutationSym, ["mutation"], {
+          onSuccess() {
+            query.invalidateQuery(querySym);
+          },
+        });
 
         expect(mutRes.data).toEqual("mutation");
 
-        mutRes.invalidate(querySym);
+        expect(queryRes.data).toBeUndefined();
+        expect(Kwery.store.has(querySym)).toBe(false);
+      });
 
-        expect(queryRes.data).toEqual(null);
+      test("mutations instance will invalidate on error", async () => {
+        let queryRes = query(querySym, ["query"]);
+
+        expect(queryRes.data).toEqual("query");
+
+        let mutRes = mutate("longRejectedMut", ["mutation"], {
+          onError() {
+            query.invalidateQuery(querySym);
+          },
+        });
+
+        await mutations.longRejectedMut().catch(error => error);
+
+        expect(mutRes.error).toEqual("mutation");
+
+        expect(queryRes.data).toBeUndefined();
         expect(Kwery.store.has(querySym)).toBe(false);
       });
     });
