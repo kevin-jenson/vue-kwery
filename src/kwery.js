@@ -89,4 +89,6 @@ function createKwery({ queries, mutations, client, Vue }) {
   };
 }
 
+export const STATUSES = Kwery.STATUSES;
+
 export default createKwery;

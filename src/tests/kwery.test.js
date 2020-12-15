@@ -1,14 +1,7 @@
 import Vue from "vue";
-import createKwery, { query, mutate } from "./kwery";
-import { Kwery } from "./data";
-
-function sleep(seconds, result) {
-  return new Promise(resolve => setTimeout(resolve, seconds, result));
-}
-
-function nightmare(seconds, result) {
-  return new Promise((_resolve, reject) => setTimeout(reject, seconds, result));
-}
+import createKwery, { query, mutate } from "../kwery";
+import { Kwery } from "../data";
+import { sleep, nightmare } from "./helpers";
 
 describe("kwery", () => {
   let { STATUSES } = Kwery;

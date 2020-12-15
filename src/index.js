@@ -5,8 +5,7 @@ function install(Vue, { queries, mutations, client }) {
 
   let { query, mutate } = createKwery({ queries, mutations, client, Vue });
 
-  Vue.prototype.$query = query;
-  Vue.prototype.$mutate = mutate;
+  Vue.prototype.$kwery = { query, mutate, STATUSES: VueKwery.STATUSES };
 }
 
 function warnings({ queries = {}, mutations = {} }) {

@@ -68,7 +68,7 @@ let users = query('queryKey');
 export default {
 	computed: {
 		users() {
-			return this.$query('queryKey');
+			return this.$kwery.query('queryKey');
 		}
 	}
 };
@@ -99,7 +99,7 @@ let userId = 1;
 export default {
 	computed: {
 		user() {
-			return this.$query("user", [userId]);
+			return this.$kwery.query("user", [userId]);
 		}
 	},
 	methods: {
@@ -157,14 +157,14 @@ Gives access directly to the cache to update a value at a specific key based on 
 export default {
 	computed: {
 		todos() {
-			return this.$query("todos");
+			return this.$kwery.query("todos");
 		}
 	},
 	methods() {
 		addTodo() {
-			let newTodo = this.$mutate("addTodo", {
+			let newTodo = this.$kwery.mutate("addTodo", {
 				onSuccess(data) {
-					this.$query.setQueryData("todos", [...this.todos, data]);
+					this.$kwery.query.setQueryData("todos", [...this.todos, data]);
 				}
 			});
 		}
@@ -180,9 +180,9 @@ Will remove the instance from the cache based on the key and force a refetch of 
 export default {
 	methods() {
 		invalidateTodos() {
-			let newTodo = this.$mutate("addTodo", {
+			let newTodo = this.$kwery.mutate("addTodo", {
 				onSuccess() {
-					this.$query.invalidateQuery("todos");
+					this.$kwery.query.invalidateQuery("todos");
 				}
 			});
 		}
