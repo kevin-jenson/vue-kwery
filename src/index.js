@@ -1,4 +1,4 @@
-import createKwery, * as VueKwery from "./src/kwery";
+import createKwery, * as VueKwery from "./kwery";
 
 function install(Vue, { queries, mutations, client }) {
   warnings({ queries, mutations });
