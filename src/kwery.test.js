@@ -1,3 +1,4 @@
+import Vue from "vue";
 import createKwery, { query, mutate } from "./kwery";
 import { Kwery } from "./data";
 
@@ -34,33 +35,34 @@ describe("kwery", () => {
 
     let client;
     beforeAll(() => {
-      client = createKwery({ queries });
+      client = createKwery({ queries, Vue });
     });
 
     test("only calls functions when called", () => {
-      query(kweries => kweries.called);
+      query("called");
 
       expect(queries.called).toHaveBeenCalled();
       expect(queries.notCalled).not.toHaveBeenCalled();
-
-      query(kweries => kweries.notCalled);
-      expect(queries.notCalled).toHaveBeenCalled();
     });
 
     test("all queries passed to config are available on query method returned from client", () => {
-      client.query(kweries => {
-        expect(kweries.requests.data).toEqual(queries.requests());
-        expect(kweries.request("person").data).toEqual(queries.request("person"));
-        expect(kweries.clients.data).toEqual(queries.clients());
-      });
+      let requests = client.query("requests");
+      let request = client.query("request", ["person"]);
+      let clients = client.query("clients");
+
+      expect(requests.data).toEqual(queries.requests());
+      expect(request.data).toEqual(queries.request("person"));
+      expect(clients.data).toEqual(queries.clients());
     });
 
     test("all queries passed to config are available on query method from import", () => {
-      query(kweries => {
-        expect(kweries.requests.data).toEqual(queries.requests());
-        expect(kweries.request("person").data).toEqual(queries.request("person"));
-        expect(kweries.clients.data).toEqual(queries.clients());
-      });
+      let requests = query("requests");
+      let request = query("request", ["person"]);
+      let clients = query("clients");
+
+      expect(requests.data).toEqual(queries.requests());
+      expect(request.data).toEqual(queries.request("person"));
+      expect(clients.data).toEqual(queries.clients());
     });
 
     test("kweries are updated when promise is resolved", async () => {
@@ -69,9 +71,9 @@ describe("kwery", () => {
         return sleep(500, data);
       }
 
-      let client = createKwery({ queries: { resolvedRequest } });
+      let client = createKwery({ queries: { resolvedRequest }, Vue });
 
-      let resp = client.query(kweries => kweries.resolvedRequest);
+      let resp = client.query("resolvedRequest");
 
       expect(resp.status).toEqual(STATUSES.pending);
 
@@ -87,9 +89,9 @@ describe("kwery", () => {
         return nightmare(500, data);
       }
 
-      let client = createKwery({ queries: { rejectedRequest } });
+      let client = createKwery({ queries: { rejectedRequest }, Vue });
 
-      let resp = client.query(kweries => kweries.rejectedRequest);
+      let resp = client.query("rejectedRequest");
 
       expect(resp.status).toEqual(STATUSES.pending);
 
@@ -104,12 +106,12 @@ describe("kwery", () => {
         cachedRequest: jest.fn(() => "cached request message"),
       };
 
-      let client = createKwery({ queries });
+      let client = createKwery({ queries, Vue });
 
-      let res = client.query(kweries => kweries.cachedRequest);
-      let res1 = client.query(kweries => kweries.cachedRequest);
+      let res = client.query("cachedRequest");
+      let res1 = client.query("cachedRequest");
 
-      expect(res).toEqual(res1);
+      expect(res.data).toEqual(res1.data);
       expect(queries.cachedRequest).toHaveBeenCalledTimes(1);
     });
 
@@ -118,9 +120,9 @@ describe("kwery", () => {
         multipleCalledRequest: jest.fn(() => "cached request message"),
       };
 
-      let client = createKwery({ queries });
+      let client = createKwery({ queries, Vue });
 
-      let res = client.query(kweries => kweries.multipleCalledRequest);
+      let res = client.query("multipleCalledRequest");
       res.refetch();
 
       expect(queries.multipleCalledRequest).toHaveBeenCalledTimes(2);
@@ -131,11 +133,11 @@ describe("kwery", () => {
         mutlCalledReqWithParams: jest.fn(message => message),
       };
 
-      let client = createKwery({ queries });
+      let client = createKwery({ queries, Vue });
 
       let message1 = "message1";
       let message2 = "message2";
-      let res = client.query(kweries => kweries.mutlCalledReqWithParams(message1));
+      let res = client.query("mutlCalledReqWithParams", [message1]);
       res.refetch(message2);
 
       expect(res.data).toEqual(message2);
@@ -149,11 +151,11 @@ describe("kwery", () => {
         },
       };
 
-      createKwery({ queries });
+      createKwery({ queries, Vue });
 
       let message1 = "message1";
       let message2 = "message2";
-      let res = query(kweries => kweries.longRefetchRequest(message1));
+      let res = query("longRefetchRequest", [message1]);
 
       expect(res.status).toEqual(STATUSES.pending);
 
@@ -172,10 +174,11 @@ describe("kwery", () => {
       expect(res.status).toEqual(STATUSES.success);
     });
 
+    // TODO: fix this test
     test("should not add resolvers to kweries if not a function", () => {
       let notAFunction = "not a function";
 
-      createKwery({ queries: { notAFunction } });
+      createKwery({ queries: { notAFunction }, Vue });
 
       query(kweries => expect(kweries.notAFunction).toBeUndefined());
     });
@@ -189,11 +192,11 @@ describe("kwery", () => {
       };
 
       beforeAll(() => {
-        createKwery({ queries });
+        createKwery({ queries, Vue });
       });
 
       test("refetch will use old args if none are passed and they were passed on original query", () => {
-        let res = query(kweries => kweries.needsRefetching("key", "message"));
+        let res = query("needsRefetching", ["key", "message"]);
         expect(res.data).toEqual(["key", "message"]);
         res.refetch();
 
@@ -205,22 +208,18 @@ describe("kwery", () => {
       });
 
       test("interval will call refetch at specified interval", async () => {
-        let res = query(kweries => kweries.needsRefetching("id", "user"));
-        res.refetch = jest.fn(() => {
-          res.refetch.bind(res);
-        });
         let interval = 100;
-        res.interval(interval);
+        let res = query("needsRefetching", ["id", "user"], { interval });
 
-        let timeout = 1100;
+        let timeout = 1000;
         await sleep(timeout);
 
         res.stopInterval();
-        expect(res.refetch).toHaveBeenCalledTimes(timeout / interval - 1);
+        expect(queries.needsRefetching).toHaveBeenCalledTimes(timeout / interval);
       });
 
       test("should set default value on instance", async () => {
-        let res = query(queries => queries.queryWithDefaultValue).default([]);
+        let res = query("queryWithDefaultValue", { default: [] });
 
         expect(res.data).toEqual([]);
 
@@ -246,7 +245,7 @@ describe("kwery", () => {
 
     let client;
     beforeEach(() => {
-      client = createKwery({ mutations });
+      client = createKwery({ mutations, Vue });
     });
 
     test("all mutatiions passed to config are available in client returned function", () => {
@@ -275,7 +274,7 @@ describe("kwery", () => {
         },
       };
 
-      let client = createKwery({ mutations });
+      let client = createKwery({ mutations, Vue });
 
       let resp = client.mutate(mutations => mutations.resolvedMutation(message));
 
@@ -295,7 +294,7 @@ describe("kwery", () => {
         },
       };
 
-      let client = createKwery({ mutations });
+      let client = createKwery({ mutations, Vue });
 
       let resp = client.mutate(mutations => mutations.rejectedMutation(message));
 
@@ -326,7 +325,7 @@ describe("kwery", () => {
         },
       };
 
-      createKwery({ mutations, queries });
+      createKwery({ mutations, queries, Vue });
 
       test("mutation instance update will update query store", () => {
         let queryRes = query(kweries => kweries[querySym]("query"));

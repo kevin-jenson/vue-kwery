@@ -3,7 +3,7 @@ import createKwery, * as VueKwery from "./src/kwery";
 function install(Vue, { queries, mutations, client }) {
   warnings({ queries, mutations });
 
-  let { query, mutate } = createKwery({ queries, mutations, client });
+  let { query, mutate } = createKwery({ queries, mutations, client, Vue });
 
   Vue.prototype.$query = query;
   Vue.prototype.$mutate = mutate;

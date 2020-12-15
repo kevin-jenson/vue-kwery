@@ -6,9 +6,9 @@ class Base {
     success: "success",
   };
 
-  constructor({ defaultValue = null, key, resolver }) {
-    this.defaultValue = defaultValue;
-    this._data = defaultValue;
+  constructor({ key, resolver }) {
+    this.defaultValue = null;
+    this._data = null;
     this.status = Base.STATUSES.uninitialized;
     this.key = key;
     this.resolver = resolver;
@@ -71,11 +71,12 @@ export class Kwery extends Base {
     Kwery.store.clear();
   }
 
-  constructor({ defaultValue, key, resolver }) {
-    super({ defaultValue, key, resolver });
+  constructor({ key, resolver }) {
+    super({ key, resolver });
 
     this._args = null;
     this._intervalId = null;
+    this._successQueue = new Set();
   }
 
   get data() {
@@ -89,18 +90,23 @@ export class Kwery extends Base {
     return this._data;
   }
 
+  _success(result) {
+    super._success(result);
+    Kwery.store.set(this.key, result);
+    this._successQueue.forEach(cb => cb());
+    this._successQueue.clear();
+  }
+
   fetchData(...args) {
     let { key } = this;
     let { store } = Kwery;
 
-    if (store.has(key)) {
-      return store.get(key);
+    if (!store.has(key)) {
+      this._args = args;
+      this.baseFetch(...args);
+    } else {
+      this._success(store.get(key));
     }
-
-    this._args = args;
-    this.baseFetch(...args);
-
-    store.set(key, this);
 
     return this;
   }
@@ -111,13 +117,14 @@ export class Kwery extends Base {
       this._args = args;
     }
 
+    // console.log("this:", this);
     return this.fetchData(...(this._args || []));
   }
 
-  interval(interval) {
+  _interval(interval) {
     this.stopInterval();
 
-    this._intervalId = setInterval(this.refetch, interval);
+    this._intervalId = setInterval(this.refetch.bind(this), interval);
   }
 
   stopInterval() {
@@ -126,16 +133,21 @@ export class Kwery extends Base {
     }
   }
 
-  default(value) {
-    this.defaultValue = value;
-    return this;
+  _setOptions(options) {
+    if (options.interval) {
+      this._successQueue.add(() => this._interval(options.interval));
+    }
+
+    if (options.default || options.defaultValue) {
+      this.defaultValue = options.default || options.defaultValue;
+    }
   }
 }
 
 export class Mutation extends Base {
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
-    this.onSuccessQueue = new Set();
+    this._successQueue = new Set();
   }
 
   get data() {
@@ -150,8 +162,8 @@ export class Mutation extends Base {
 
   _success(result) {
     super._success(result);
-    this.onSuccessQueue.forEach(cb => cb());
-    this.onSuccessQueue.clear();
+    this._successQueue.forEach(cb => cb());
+    this._successQueue.clear();
   }
 
   update(key, updater) {
@@ -160,7 +172,7 @@ export class Mutation extends Base {
     if (this.status === Base.STATUSES.success) {
       cb();
     } else {
-      this.onSuccessQueue.add(cb);
+      this._successQueue.add(cb);
     }
 
     return this;
@@ -171,7 +183,7 @@ export class Mutation extends Base {
     if (this.status === Base.STATUSES.success) {
       cb();
     } else {
-      this.onSuccessQueue.add(cb);
+      this._successQueue.add(cb);
     }
   }
 }

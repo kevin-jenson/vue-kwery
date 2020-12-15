@@ -1,7 +1,7 @@
-import { observable } from "vue";
 import { Kwery, Mutation } from "./data";
 
-const kweries = {};
+let _reactive;
+const kweries = new Map();
 function addToKweries(client, queries) {
   for (let key in queries) {
     let query = queries[key];
@@ -12,32 +12,36 @@ function addToKweries(client, queries) {
       continue;
     }
 
-    let argsCount = query.length;
-
     if (client) {
       query = (...args) => query(client, ...args);
-      argsCount -= 1;
     }
 
-    Object.defineProperty(kweries, key, {
-      get() {
-        let kwery = new Kwery({ key, resolver: query });
-
-        if (argsCount > 0) {
-          return (...args) => kwery.fetchData(...args);
-        }
-
-        return kwery.fetchData();
-      },
-    });
+    kweries.set(key, query);
   }
 }
 
-export function query(cb) {
-  return observable(cb(kweries));
+export function query(key, args, options) {
+  let resolver = kweries.get(key);
+
+  if (!resolver) {
+    throw new Error(`Query ${key} not registered`);
+  }
+
+  if (!Array.isArray(args)) {
+    options = args;
+    args = [];
+  }
+
+  let kwery = new Kwery({ key, resolver });
+
+  if (options) {
+    kwery._setOptions(options);
+  }
+
+  return _reactive(kwery.fetchData(...args));
 }
 
-const meutasions = {};
+const meutasions = new Map();
 function addToMutations(client, mutations) {
   for (let key in mutations) {
     let mutation = mutations[key];
@@ -46,21 +50,17 @@ function addToMutations(client, mutations) {
       mutation = (...args) => mutation(client, ...args);
     }
 
-    function mutationWrapper(...args) {
-      let mut = observable(new Mutation({ key, resolver: mutation }));
-
-      return mut.fetchData(...args);
-    }
-
-    meutasions[key] = mutationWrapper;
+    let mut = new Mutation({ key, resolver: mutation });
+    meutasions.set(key, mut);
   }
 }
 
 export function mutate(cb) {
-  return cb(meutasions);
+  return _reactive(cb(meutasions));
 }
 
-function createKwery({ queries, mutations, client }) {
+function createKwery({ queries, mutations, client, Vue }) {
+  _reactive = Vue.observable ? Vue.observable : Vue.reactive;
   addToKweries(client, queries);
   addToMutations(client, mutations);
 
