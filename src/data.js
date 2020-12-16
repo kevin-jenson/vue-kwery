@@ -1,3 +1,5 @@
+import { keyHash } from "./utils";
+
 class Base {
   static STATUSES = {
     uninitialized: "uninitialized",
@@ -6,18 +8,18 @@ class Base {
     success: "success",
   };
 
+  _dataError;
+  _data = null;
+  defaultValue = null;
+  status = Base.STATUSES.uninitialized;
   constructor({ key, resolver }) {
-    this._error;
-    this.defaultValue = null;
-    this._data = null;
-    this.status = Base.STATUSES.uninitialized;
     this.key = key;
     this.resolver = resolver;
   }
 
   get error() {
     if (this.status === Kwery.STATUSES.error) {
-      return this._error;
+      return this._dataError;
     }
 
     return undefined;
@@ -30,7 +32,7 @@ class Base {
 
     let result = this.resolver(...args);
 
-    if (result && typeof result.then === "function") {
+    if (typeof result?.then === "function") {
       result.then(this._success.bind(this)).catch(this._error.bind(this));
     } else {
       this._success(result);
@@ -46,7 +48,7 @@ class Base {
 
   _error(error) {
     this.status = Base.STATUSES.error;
-    this._error = error;
+    this._dataError = error;
   }
 }
 
@@ -65,12 +67,12 @@ export class Kwery extends Base {
     Kwery.store.clear();
   }
 
+  _args = null;
+  _intervalId = null;
+  _successQueue = new Set();
+  _keepPreviousData = false;
   constructor({ key, resolver }) {
     super({ key, resolver });
-
-    this._args = null;
-    this._intervalId = null;
-    this._successQueue = new Set();
   }
 
   get data() {
@@ -86,7 +88,17 @@ export class Kwery extends Base {
 
   _success(result) {
     super._success(result);
-    Kwery.store.set(this.key, result);
+
+    let key = this.key;
+    if (this._keepPreviousData) {
+      if (!this._args?.length) {
+        throw new Error("Arguments must be provided if keepPreviousData option is true");
+      }
+
+      key = keyHash([key, this._args]);
+    }
+
+    Kwery.store.set(key, result);
     this._successQueue.forEach(cb => cb());
     this._successQueue.clear();
   }
@@ -95,8 +107,13 @@ export class Kwery extends Base {
     let { key } = this;
     let { store } = Kwery;
 
+    if (this._keepPreviousData) {
+      key = keyHash([key, args]);
+    }
+
+    this._args = args;
     if (!store.has(key)) {
-      this._args = args;
+      store.set(key, this.defaultValue);
       this.baseFetch(...args);
     } else {
       this._success(store.get(key));
@@ -111,7 +128,6 @@ export class Kwery extends Base {
       this._args = args;
     }
 
-    // console.log("this:", this);
     return this.fetchData(...(this._args || []));
   }
 
@@ -135,14 +151,18 @@ export class Kwery extends Base {
     if (options.default || options.defaultValue) {
       this.defaultValue = options.default || options.defaultValue;
     }
+
+    if (options.keepPreviousData) {
+      this._keepPreviousData = options.keepPreviousData;
+    }
   }
 }
 
 export class Mutation extends Base {
+  _successQueue = new Set();
+  _errorQueue = new Set();
   constructor({ defaultValue, key, resolver }) {
     super({ defaultValue, key, resolver });
-    this._successQueue = new Set();
-    this._errorQueue = new Set();
   }
 
   get data() {

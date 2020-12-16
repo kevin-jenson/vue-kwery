@@ -225,6 +225,34 @@ describe("kwery", () => {
         expect(res.data).toEqual("message");
       });
     });
+
+    describe("pageKey", () => {
+      let queries = {
+        paginatedRequest: jest.fn((page, filters) => sleep(500, page, filters)),
+      };
+
+      beforeAll(() => {
+        createKwery({ queries, Vue });
+      });
+
+      test("will call again if page key changed", async () => {
+        query("paginatedRequest", [1, { status: ["none"] }], { keepPreviousData: true });
+        query("paginatedRequest", [2, { status: ["none"] }], { keepPreviousData: true });
+
+        expect(queries.paginatedRequest).toHaveBeenCalledTimes(2);
+
+        query("paginatedRequest", [2, { status: ["all"] }], { keepPreviousData: true });
+
+        expect(queries.paginatedRequest).toHaveBeenCalledTimes(3);
+      });
+
+      test("will pull from cache if page key hasn`t changed", () => {
+        query("paginatedRequest", [1, { status: ["none"] }], { keepPreviousData: true });
+        query("paginatedRequest", [1, { status: ["none"] }], { keepPreviousData: true });
+
+        expect(queries.paginatedRequest).toHaveBeenCalledTimes(1);
+      });
+    });
   });
 
   describe("meutasions", () => {

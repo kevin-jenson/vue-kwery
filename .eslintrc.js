@@ -14,5 +14,6 @@ module.exports = {
   },
   rules: {
     "no-inner-declarations": 0,
+    "no-prototype-builtins": 0,
   },
 };
