@@ -12,11 +12,11 @@ function addToKweries(client, queries) {
       continue;
     }
 
-    if (client) {
-      query = (...args) => query(client, ...args);
-    }
+    let queryFn = client
+      ? (...args) => query(client, ...args)
+      : query;
 
-    kweries.set(key, query);
+    kweries.set(key, queryFn);
   }
 }
 
@@ -49,11 +49,11 @@ function addToMutations(client, mutations) {
   for (let key in mutations) {
     let mutation = mutations[key];
 
-    if (client) {
-      mutation = (...args) => mutation(client, ...args);
-    }
+    let mutationFn = client
+      ? (...args) => mutation(client, ...args)
+      : mutation;
 
-    meutasions.set(key, mutation);
+    meutasions.set(key, mutationFn);
   }
 }
 

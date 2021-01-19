@@ -253,6 +253,22 @@ describe("kwery", () => {
         expect(queries.paginatedRequest).toHaveBeenCalledTimes(1);
       });
     });
+
+    describe("with injected client", () => {
+      let httpClient = {};
+      let queries = {
+        withClient: jest.fn()
+      };
+
+      beforeAll(() => {
+        createKwery({ queries, Vue, client: httpClient });
+      });
+
+      it("calls query function with client and args", () => {
+        query("withClient", [1, 2]);
+        expect(queries.withClient).toHaveBeenCalledWith(httpClient, 1, 2);
+      });
+    });
   });
 
   describe("meutasions", () => {
@@ -421,6 +437,23 @@ describe("kwery", () => {
 
         expect(queryRes.data).toBeUndefined();
         expect(Kwery.store.has(querySym)).toBe(false);
+      });
+    });
+
+
+    describe("with injected client", () => {
+      let httpClient = {};
+      let mutations = {
+        withClient: jest.fn()
+      };
+
+      beforeAll(() => {
+        createKwery({ mutations, Vue, client: httpClient });
+      });
+
+      it("calls mutation function with client and args", () => {
+        client.mutate("withClient", [1, 2]);
+        expect(mutations.withClient).toHaveBeenCalledWith(httpClient, 1, 2);
       });
     });
   });
